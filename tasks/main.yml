@@ -1,0 +1,113 @@
+- name: install supervisor
+  apt:
+    name: supervisor
+    state: present
+  become: true
+
+- name: init vdb for new node
+  shell: mkfs -t ext4 /dev/vdb; echo '/dev/vdb     /data   ext4   noatime,acl,user_xattr 1 1' >> /etc/fstab ;mount -a
+
+- name: create elastic group
+  group:
+    name: {{ ELA_USER }}
+    state: present
+
+- name: create user elastic own to elatic group
+  user:
+    name: {{ ELA_USER }}
+    shell: /bin/bash
+    group: {{ ELA_USER }}
+    createhome: yes
+    home: "/home/{{ ELA_USER }}"
+    state: present
+- name: init sysctl some value
+  - sysctl:
+    name: {{ item.name }}
+    value: {{ item.value }}
+    sysctl_set: yes
+    state: present
+    reload: yes
+   with_items:
+    - {name: 'vm.max_map_count',value: 655300}
+    - {name: 'net.ipv4.tcp_abort_on_overflow',value: 1} 
+    - {name: 'net.core.somaxconn',value: 2048
+
+- name: configure system settings, file descriptors and number of threads
+  pam_limits:
+        domain: {{ ELA_USER }}
+        limit_type: {{ item.limit_type }}
+        limit_item: {{ item.limit_item }}
+        value: {{item.value}}
+      with_items:
+        - { limit_type: '-', limit_item: 'nofile', value: 655360 }
+        - { limit_type: '-', limit_item: 'nproc', value: 2056474 }
+        - { limit_type: '-', limit_item: 'fsize', value: unlimited }
+        - { limit_type: '_', limit_item: 'memlock', value: unlimited }
+    - name: reload settings from all system configuration files
+      shell: sysctl --system
+
+- name: Check if JDK installed
+  stat:
+    path: /opt/jdk1.8.0_141
+  register: jdk_exist
+
+- name: Install JDK1.8
+  unarchive:
+    src: {{ JDK_TAR_URL }}
+    dest: /opt/
+    remote_src: yes
+  when: not jdk_exist.stat.exists
+
+- name: create a directory if it doesn't exist
+  file:
+    path: /usr/java/
+    state: directory
+    mode: 0755
+
+- name: Create JDK link
+  file:
+    src: '/opt/jdk1.8.0_141'
+    dest: '/usr/java/default'
+    state: link
+
+- name: Add java environment to /etc/profile
+  synchronize:
+    src: templates/java.sh
+    dest: /etc/profile.d/java.sh
+  become: true
+
+- name: install elasticsearch
+  unarchive:
+    src: {{ ELA_TAR_URL }}
+    dest: /data/
+    owner: {{ ELA_USER }}
+    group: {{ ELA_USER }}
+    remote_src: yes
+
+- name: change jvm.optitions
+  synchronize:
+    src: templates/jvm.options
+    dest: /data/elasticsearch/config/jvm.options
+  become: true
+
+- name: change elasticsearch java_home
+  shell: sed '16 aJAVA_HOME=/usr/java/default' -i /data/elasticsearch/bin/elasticsearch
+  become: true
+
+- name: chown elastic and link
+  file:
+    src: /data/{{ ELA_TAR_NAME }}
+    dest: /data/elasticsearch
+    owner: {{ ELA_USER }}
+    group: {{ ELA_USER }}
+    state: link
+
+- name: copy elastic supervisor conf
+  copy: src=elastic.conf dest=/etc/supervisor/conf.d/elastic.conf
+  become: true
+  backup: yes
+    
+- name: restart supervisor
+  shell: supervisorctl reload
+  become: true
+

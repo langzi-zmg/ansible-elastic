@@ -1,0 +1,7 @@
+ELA_USER: elastic
+JDK_TAR_URL: http://wallstreetcn-1252820405.cossh.myqcloud.com/jdk-8u141-linux-x64.tar.gz
+ELA_TAR_URL_6.6.1: http://wallstreetcn-1252820405.cossh.myqcloud.com/elasticsearch-6.6.1.tar.gz 
+ELA_TAR_URL_6.4.3: https://wdl.wallstreetcn.com/elasticsearch-6.4.3.tar.gz
+ELA_TAR_URL: https://wdl.wallstreetcn.com/elasticsearch-6.4.3.tar.gz
+IK_TAR_URL_6.6.1: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.6.1/elasticsearch-analysis-ik-6.6.1.zip
+IK_TAR_URL_6.4.3: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.4.3/elasticsearch-analysis-ik-6.4.3.zip
